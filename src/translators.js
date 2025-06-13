@@ -88,8 +88,9 @@ Translators = Object.assign(Translators, new function() {
 		Zotero.debug(`Translators initialized with ${translators.length} loaded`);
 	};
 	
-	this.load = async function() {
-		var translatorsDirPath = path.resolve(path.resolve(__dirname, '..'), Zotero.Prefs.get("translatorsDirectory"));
+	this.load = async function(temp) {
+		var translatorsDirPath = path.resolve(path.resolve(__dirname, '..'), Zotero.Prefs
+			.get(temp ? "tempTranslatorsDirectory" : "translatorsDirectory"));
 		
 		if(!await new Promise(resolve => fs.access(translatorsDirPath, (err) => resolve(!err)))) {
 			throw new Error("Translators directory "+translatorsDirPath+" is not "+
@@ -189,7 +190,14 @@ Translators = Object.assign(Translators, new function() {
 	this.getWebTranslatorsForLocation = async function (URI, rootURI) {
 		var isFrame = URI !== rootURI;
 		if(!_initialized) Zotero.Translators.init();
-		var allTranslators = _cache["web"];
+		var tempWebTranslators = [];
+		try {
+			tempWebTranslators = (await this.load(true))
+				.map(translator => new Zotero.Translator(translator));
+		} catch (e) {
+			Zotero.logError(e);
+		}
+		var allTranslators = tempWebTranslators.concat(_cache["web"]);
 		var potentialTranslators = [];
 		var proxies = [];
 		
