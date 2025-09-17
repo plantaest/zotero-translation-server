@@ -47,7 +47,26 @@ Translators = Object.assign(Translators, new function() {
 	 */
 	this.init = async function(translators) {
 		if(!translators) {
-			translators = await this.load();
+			const translatorsDirPath = path.resolve(
+				path.resolve(__dirname, ".."),
+				Zotero.Prefs.get("translatorsDirectory")
+			);
+
+			translators = await this.load(translatorsDirPath);
+
+			const extraBase = path.resolve(
+				path.resolve(__dirname, ".."),
+				Zotero.Prefs.get("extraTranslatorsDirectory")
+			);
+
+			const entries = fs.readdirSync(extraBase, { withFileTypes: true });
+			const subDirs = entries.filter(e => e.isDirectory());
+
+			for (const dir of subDirs) {
+				const dirPath = path.join(extraBase, dir.name);
+				const extraTranslators = await this.load(dirPath);
+				translators.push(...extraTranslators);
+			}
 		}
 		
 		_cache = {"import":[], "export":[], "web":[], "search":[]};
@@ -88,9 +107,7 @@ Translators = Object.assign(Translators, new function() {
 		Zotero.debug(`Translators initialized with ${translators.length} loaded`);
 	};
 	
-	this.load = async function() {
-		var translatorsDirPath = path.resolve(path.resolve(__dirname, '..'), Zotero.Prefs.get("translatorsDirectory"));
-		
+	this.load = async function(translatorsDirPath) {
 		if(!await new Promise(resolve => fs.access(translatorsDirPath, (err) => resolve(!err)))) {
 			throw new Error("Translators directory "+translatorsDirPath+" is not "+
 				"accessible. Please set this correctly in config.js.\n")
